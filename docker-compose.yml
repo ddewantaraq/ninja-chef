@@ -1,0 +1,16 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: ninja_chef_db
+    environment:
+      POSTGRES_USER: qlee_ai_app
+      POSTGRES_PASSWORD: change_me
+      POSTGRES_DB: qlee_ai_app_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+
+volumes:
+  pgdata:
