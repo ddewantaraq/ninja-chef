@@ -18,8 +18,8 @@ const firstStep = new Step({
       },
     ], {
       output: NinjaChefMealPlanSchema,
-      threadId: "db8fc63c-60b4-4baf-b876-357e4f99dabf",
-      resourceId: 'generateMealPlan-dmz',
+      threadId: context?.triggerData?.threadId || randomUuid,
+      resourceId: `generateMealPlan-${context?.triggerData?.userId || 'dmz'}`,
     });
     return res?.object || { meal_plan: [] };  
   },
@@ -29,6 +29,8 @@ export const ninjaChefWorkflow = new Workflow({
   name: 'ninjachef-workflow',
   triggerSchema: z.object({
     message: z.string().describe('what kind of meal do you want?'),
+    threadId: z.string().describe('threadId'),
+    userId: z.string().describe('userId'),
   }),
 })
 

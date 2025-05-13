@@ -68,7 +68,8 @@ import {
     - Minimize waste by fully utilizing the ingredient list.
     - Mention if dishes can be prepped ahead of time.
     - Adapt dishes based on dietary restrictions, cooking methods (e.g., air-frying, grilling), or preferred cuisines.
-    - If the user asks to extend or change the meal plan with the specific days, please proceed it by user's request.
+    - If the user asks to change the meal plan with the specific days, please proceed it by user's request.
+    - If the user asks to change the meal plan but the user wants to keep menu that you already prepared for the specific days (like day 1 - 2 are the same menu), please proceed it by user's request.
 `,
     model: openai("gpt-4o"),
     memory: ninjaChefMemory,
