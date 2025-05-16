@@ -1,12 +1,12 @@
 
 import { Mastra } from '@mastra/core/mastra';
 import { createLogger } from '@mastra/core/logger';
-import { ninjaChefAgent } from './agents';
+import { ninjaChefExtractData, ninjaChefMealPlanner } from './agents';
 import { ninjaChefWorkflow } from './workflows';
 import { storage } from './memory'
 
 export const mastra = new Mastra({
-  agents: { ninjaChefAgent },
+  agents: { ninjaChefExtractData, ninjaChefMealPlanner },
   workflows: { ninjaChefWorkflow },
   storage: storage,
   logger: createLogger({

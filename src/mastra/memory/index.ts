@@ -3,11 +3,11 @@ import { PostgresStore, PgVector } from "@mastra/pg";
 import { openai } from "@ai-sdk/openai";
  
 // PostgreSQL connection details
-const host = "localhost";
-const port = 5432;
-const user = "qlee_ai_app";
-const database = "qlee_ai_app_db";
-const password = "change_me";
+const host = process.env.DATABASE_HOST || "localhost";
+const port = Number(process.env.DATABASE_PORT) || 5432;
+const user = process.env.DATABASE_USER || "postgres";
+const database = process.env.DATABASE_NAME || "postgres";
+const password = process.env.DATABASE_PASSWORD || "postgres";
 const connectionString = `postgresql://${user}:${password}@${host}:${port}/${database}`;
 export const storage = new PostgresStore({
   host,
