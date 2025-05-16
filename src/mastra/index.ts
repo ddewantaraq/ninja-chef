@@ -14,6 +14,11 @@ export const mastra = new Mastra({
     teamSlug: 'dimas-dewantaras-projects',
     token: process.env.VERCEL_TOKEN || '',
   }),
+  server: {
+    build: {
+      swaggerUI: true,
+    }
+  },
   storage: storage,
   logger: createLogger({
     name: 'Mastra',
