@@ -15,16 +15,16 @@ export const storage = new PostgresStore({
   user,
   database,
   password,
-})
+});
  
 // Initialize memory with PostgreSQL storage and vector search
 export const ninjaChefMemory = new Memory({
   storage: storage,
-  vector: new PgVector({ connectionString, pgPoolOptions: {ssl: false} }), // not recommended for production
+  vector: new PgVector({ connectionString, pgPoolOptions: { ssl: false } }), // not recommended for production
   embedder: openai.embedding("text-embedding-3-small"),
   options: {
     threads: {
-        generateTitle: false
+      generateTitle: false
     },
     lastMessages: 10,
     semanticRecall: {

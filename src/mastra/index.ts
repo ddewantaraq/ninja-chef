@@ -1,9 +1,8 @@
-import { Mastra } from '@mastra/core/mastra';
-import { createLogger } from '@mastra/core/logger';
+import { Mastra } from '@mastra/core';
+import { PinoLogger } from '@mastra/loggers';
 import { ninjaChefExtractData, ninjaChefMealPlanner } from './agents';
 import { ninjaChefWorkflow } from './workflows';
 import { storage } from './memory'
-import { VercelDeployer } from '@mastra/deployer-vercel';
 import { v4 as uuidv4 } from 'uuid';
 import { RuntimeContext } from '@mastra/core/di';
 import type { NinjaChefRuntimeContext } from './interfaces';
@@ -11,11 +10,6 @@ import type { NinjaChefRuntimeContext } from './interfaces';
 export const mastra = new Mastra({
   agents: { ninjaChefExtractData, ninjaChefMealPlanner },
   workflows: { ninjaChefWorkflow },
-  deployer: new VercelDeployer({
-    projectName: process.env.VERCEL_PROJECT_NAME || '',
-    teamSlug: process.env.VERCEL_TEAM_SLUG || '',
-    token: process.env.VERCEL_TOKEN || '',
-  }),
   server: {
     build: {
       swaggerUI: true,
@@ -47,8 +41,5 @@ export const mastra = new Mastra({
     ],
   },
   storage: storage,
-  logger: createLogger({
-    name: 'Mastra',
-    level: 'info',
-  }),
+  logger: new PinoLogger({ name: 'Mastra', level: 'info' }),
 });
