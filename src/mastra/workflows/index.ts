@@ -6,11 +6,20 @@ import { v4 as uuidv4 } from 'uuid';
 import { ExtractedData, MealPlanRequirements } from '../interfaces';
 import { getMealPlanExternal } from '../tools';
 
+export const ninjaChefWorkflow = new Workflow({
+  name: 'ninjachef-workflow',
+  triggerSchema: z.object({
+    message: z.string().describe('what kind of meal do you want?'),
+  }),
+})
+
 const firstStep = new Step({
   id: "extract-data",
   outputSchema: ExtractedDataSchema,
-  execute: async ({ context, mastra }) => {
+  execute: async ({ context, mastra, runtimeContext }) => {
     const randomUuid = uuidv4();
+    const threadId = (runtimeContext?.get("threadId") as string) || randomUuid;
+    const userId = (runtimeContext?.get("userId") as string) || 'dmz';
     const res = await ninjaChefExtractData.generate([
       {
         role: 'user',
@@ -18,47 +27,42 @@ const firstStep = new Step({
       },
     ], {
       output: ExtractedDataSchema,
-      threadId: context?.triggerData?.threadId || randomUuid,
-      resourceId: `extractData-${context?.triggerData?.userId || 'dmz'}`,
+      threadId,
+      resourceId: `extractData-${userId}`,
     });
-    const result = {...res?.object, ...{ threadId: context?.triggerData?.threadId || randomUuid, userId: context?.triggerData?.userId || 'dmz' } };
-    return result || { 
-      cuisine: '', timeRange: '', ingredients: '', 
-      threadId: context?.triggerData?.threadId || randomUuid, 
-      userId: context?.triggerData?.userId || 'dmz'  };  
+    const result = res?.object;
+    return result || {
+      cuisine: '', timeRange: '', ingredients: ''
+    };
   },
 });
 
 const secondStep = new Step({
   id: "get-meal-plan-requirements",
   outputSchema: MealPlanRequirementsSchema,
-  execute: async ({ context, mastra }) => {
+  execute: async ({ context, mastra, runtimeContext }) => {
     const extractedData: ExtractedData = context?.getStepResult(firstStep);
     if (!extractedData) {
       throw new Error('Meal plan not found');
     }
-    const externalResult: MealPlanRequirements =  await getMealPlanExternal(extractedData.ingredients, extractedData.timeRange, extractedData.cuisine);
-
-    return {
-      ...externalResult,
-      threadId: extractedData.threadId,
-      userId: extractedData.userId,
-    }; // Merge the results
+    const externalResult: MealPlanRequirements = await getMealPlanExternal(extractedData.ingredients, 
+      extractedData.timeRange, extractedData.cuisine);
+    return externalResult;
   }
 });
 
 const thirdStep = new Step({
   id: "generate-meal-plan",
   outputSchema: NinjaChefMealPlanSchema,
-  execute: async ({ context, mastra }) => {
+  execute: async ({ context, mastra, runtimeContext }) => {
     const randomUuid = uuidv4();
     const mealPlan: MealPlanRequirements = context?.getStepResult(secondStep);
     if (!mealPlan) {
       throw new Error('Meal plan not found');
     }
-    const prompt = `Based on the following data provided, suggest meal plan:
-      ${JSON.stringify(mealPlan, null, 2)}
-      `;
+    const prompt = `Based on the following data provided, suggest meal plan:\n${JSON.stringify(mealPlan, null, 2)}\n`;
+    const threadId = (runtimeContext?.get("threadId") as string) || randomUuid;
+    const userId = (runtimeContext?.get("userId") as string) || 'dmz';
     const res = await ninjaChefMealPlanner.generate([
       {
         role: 'user',
@@ -66,21 +70,13 @@ const thirdStep = new Step({
       },
     ], {
       output: NinjaChefMealPlanSchema,
-      threadId: randomUuid, 
-      resourceId: `generateMealPlan-${context?.triggerData?.userId || 'dmz'}`,
+      threadId,
+      resourceId: `generateMealPlan-${userId}`,
     });
-    return res?.object || { meal_plan: [], cuisine: '', timeRange: '', ingredients: '' };
+    // The .object property may not exist, so return res directly if it matches schema
+    return (res as any)?.object || res || { meal_plan: [], cuisine: '', timeRange: '', ingredients: '' };
   },
 });
-
-export const ninjaChefWorkflow = new Workflow({
-  name: 'ninjachef-workflow',
-  triggerSchema: z.object({
-    message: z.string().describe('what kind of meal do you want?'),
-    threadId: z.string().describe('threadId'),
-    userId: z.string().describe('userId'),
-  }),
-})
 
 ninjaChefWorkflow.step(firstStep).then(secondStep).then(thirdStep);
 ninjaChefWorkflow.commit();
