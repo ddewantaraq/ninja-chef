@@ -22,8 +22,10 @@ const firstStep = createStep({
   execute: async (context) => {
     const { inputData, mastra, runtimeContext } = context;
     const randomUuid = uuidv4();
-    const threadId = (runtimeContext as any)?.threadId || randomUuid;
-    const userId = (runtimeContext as any)?.userId || 'dmz';
+    const threadId: string = `${runtimeContext.get("threadId")}` || randomUuid;
+    const userId: string = `${runtimeContext.get("userId")}` || 'dmz';
+    console.log("[extract-data] threadId:", threadId);
+    console.log("[extract-data] userId:", userId);
     const res = await ninjaChefExtractData.generate([
       {
         role: 'user',
@@ -67,8 +69,8 @@ const thirdStep = createStep({
       throw new Error('Meal plan not found');
     }
     const prompt = `Based on the following data provided, suggest meal plan:\n${JSON.stringify(inputData, null, 2)}\n`;
-    const threadId = (runtimeContext as any)?.threadId || randomUuid;
-    const userId = (runtimeContext as any)?.userId || 'dmz';
+    const threadId: string = `${randomUuid}`;
+    const userId: string = `${runtimeContext.get("userId")}` || 'dmz';
     const res = await ninjaChefMealPlanner.generate([
       {
         role: 'user',
