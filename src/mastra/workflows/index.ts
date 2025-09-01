@@ -1,64 +1,76 @@
-import { Step, Workflow } from '@mastra/core/workflows';
+import { createStep, createWorkflow } from '@mastra/core';
 import { z } from 'zod';
 import { ExtractedDataSchema, MealPlanRequirementsSchema, NinjaChefMealPlanSchema } from '../schemas';
 import { ninjaChefMealPlanner, ninjaChefExtractData } from '../agents';
 import { v4 as uuidv4 } from 'uuid';
-import { ExtractedData, MealPlanRequirements } from '../interfaces';
+import { MealPlanRequirements } from '../interfaces';
 import { getMealPlanExternal } from '../tools';
 
-const firstStep = new Step({
+export const ninjaChefWorkflow = createWorkflow({
+  id: 'ninjachef-workflow',
+  inputSchema: z.object({
+    message: z.string().describe('what kind of meal do you want?'),
+  }),
+  outputSchema: NinjaChefMealPlanSchema,
+  steps: [], // will be chained below
+});
+
+const firstStep = createStep({
   id: "extract-data",
+  inputSchema: z.object({ message: z.string() }),
   outputSchema: ExtractedDataSchema,
-  execute: async ({ context, mastra }) => {
+  execute: async (context) => {
+    const { inputData, mastra, runtimeContext } = context;
     const randomUuid = uuidv4();
+    const threadId: string = `${runtimeContext.get("threadId")}` || randomUuid;
+    const userId: string = `${runtimeContext.get("userId")}` || 'dmz';
+    console.log("[extract-data] threadId:", threadId);
+    console.log("[extract-data] userId:", userId);
     const res = await ninjaChefExtractData.generate([
       {
         role: 'user',
-        content: context?.triggerData?.message,
+        content: inputData.message,
       },
     ], {
       output: ExtractedDataSchema,
-      threadId: context?.triggerData?.threadId || randomUuid,
-      resourceId: `extractData-${context?.triggerData?.userId || 'dmz'}`,
+      threadId,
+      resourceId: `extractData-${userId}`,
     });
-    const result = {...res?.object, ...{ threadId: context?.triggerData?.threadId || randomUuid, userId: context?.triggerData?.userId || 'dmz' } };
-    return result || { 
-      cuisine: '', timeRange: '', ingredients: '', 
-      threadId: context?.triggerData?.threadId || randomUuid, 
-      userId: context?.triggerData?.userId || 'dmz'  };  
+    const result = res?.object;
+    return result || {
+      cuisine: '', timeRange: '', ingredients: ''
+    };
   },
 });
 
-const secondStep = new Step({
+const secondStep = createStep({
   id: "get-meal-plan-requirements",
+  inputSchema: ExtractedDataSchema,
   outputSchema: MealPlanRequirementsSchema,
-  execute: async ({ context, mastra }) => {
-    const extractedData: ExtractedData = context?.getStepResult(firstStep);
-    if (!extractedData) {
+  execute: async (context) => {
+    const { inputData, mastra, runtimeContext } = context;
+    if (!inputData) {
       throw new Error('Meal plan not found');
     }
-    const externalResult: MealPlanRequirements =  await getMealPlanExternal(extractedData.ingredients, extractedData.timeRange, extractedData.cuisine);
-
-    return {
-      ...externalResult,
-      threadId: extractedData.threadId,
-      userId: extractedData.userId,
-    }; // Merge the results
+    const externalResult: MealPlanRequirements = await getMealPlanExternal(inputData.ingredients, 
+      inputData.timeRange, inputData.cuisine);
+    return externalResult;
   }
 });
 
-const thirdStep = new Step({
+const thirdStep = createStep({
   id: "generate-meal-plan",
+  inputSchema: MealPlanRequirementsSchema,
   outputSchema: NinjaChefMealPlanSchema,
-  execute: async ({ context, mastra }) => {
+  execute: async (context) => {
+    const { inputData, mastra, runtimeContext } = context;
     const randomUuid = uuidv4();
-    const mealPlan: MealPlanRequirements = context?.getStepResult(secondStep);
-    if (!mealPlan) {
+    if (!inputData) {
       throw new Error('Meal plan not found');
     }
-    const prompt = `Based on the following data provided, suggest meal plan:
-      ${JSON.stringify(mealPlan, null, 2)}
-      `;
+    const prompt = `Based on the following data provided, suggest meal plan:\n${JSON.stringify(inputData, null, 2)}\n`;
+    const threadId: string = `${randomUuid}`;
+    const userId: string = `${runtimeContext.get("userId")}` || 'dmz';
     const res = await ninjaChefMealPlanner.generate([
       {
         role: 'user',
@@ -66,21 +78,11 @@ const thirdStep = new Step({
       },
     ], {
       output: NinjaChefMealPlanSchema,
-      threadId: randomUuid, 
-      resourceId: `generateMealPlan-${context?.triggerData?.userId || 'dmz'}`,
+      threadId,
+      resourceId: `generateMealPlan-${userId}`,
     });
-    return res?.object || { meal_plan: [], cuisine: '', timeRange: '', ingredients: '' };
+    return (res as any)?.object || res || { meal_plan: [], cuisine: '', timeRange: '', ingredients: '' };
   },
 });
 
-export const ninjaChefWorkflow = new Workflow({
-  name: 'ninjachef-workflow',
-  triggerSchema: z.object({
-    message: z.string().describe('what kind of meal do you want?'),
-    threadId: z.string().describe('threadId'),
-    userId: z.string().describe('userId'),
-  }),
-})
-
-ninjaChefWorkflow.step(firstStep).then(secondStep).then(thirdStep);
-ninjaChefWorkflow.commit();
+ninjaChefWorkflow.then(firstStep).then(secondStep).then(thirdStep).commit();

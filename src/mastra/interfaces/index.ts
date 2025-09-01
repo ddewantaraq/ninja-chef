@@ -60,10 +60,16 @@ interface ExtractedData {
   userId?: string;
 }
 
+type NinjaChefRuntimeContext = {
+  threadId: string;
+  userId: string;
+};
+
 export {
   RecipeIntructionResponse,
   Step,
   RecipeResponse,
   MealPlanRequirements,
-  ExtractedData
+  ExtractedData,
+  NinjaChefRuntimeContext
 }

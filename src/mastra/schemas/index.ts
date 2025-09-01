@@ -1,4 +1,3 @@
-import { threadId } from "worker_threads";
 import { z } from "zod";
 
 // Enums
@@ -77,16 +76,12 @@ const MealPlanRequirementsSchema = z.object({
   cuisine: z.string(),
   recipes: z.array(RecipeResponseSchema),
   instructions: z.array(RecipeInstructionResponseSchema),
-  threadId: z.string().optional(),
-  userId: z.string().optional(),
 });
 
 const ExtractedDataSchema = z.object({
   cuisine: z.string(),
   timeRange: z.string(),
-  ingredients: z.string(),
-  threadId: z.string(),
-  userId: z.string(),
+  ingredients: z.string()
 });
 
 export {
